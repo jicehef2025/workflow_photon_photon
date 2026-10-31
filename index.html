@@ -1,0 +1,774 @@
+<!DOCTYPE html>
+<html lang="fr"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Workflow du photon au photon - JC FOUCHE 2026 - www.savoirnumerique.com</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600&family=Barlow+Semi+Condensed:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Charte du LABO Étalonnage / LUT Explorer JC Fouché : thème sombre, titres Barlow Condensed, chiffres IBM Plex Mono.
+   Mise en page : 6 blocs sur une même ligne d'horizon, reliés par des flèches roses comme le schéma de workflow. */
+:root{
+  --bg:#0c0e10; --bay:#121518; --bay-2:#181c20; --bay-3:#1e2328; --rule:#262c32; --rule-2:#333a42;
+  --fg:#e6e9ec; --muted:#8e979f; --dim:#5f6870; --ico:#d4d9de;
+  --amber:#e8b84a; --amber-ink:#1b1404; --phos:#86e0a2; --warn:#f0a35e; --bad:#ef6b6b; --blue:#5b95f0; --pink:#ec3a8c;
+  --f-disp:'Barlow Condensed','Arial Narrow',system-ui,sans-serif;
+  --f-ui:'Barlow Semi Condensed','Barlow','Arial Narrow',system-ui,sans-serif;
+  --f-mono:'IBM Plex Mono',ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  color-scheme:dark;
+}
+html,body{background:var(--bg);color:var(--fg)}
+body{font-family:var(--f-ui);font-size:15px;line-height:1.4;padding:0 16px 32px;margin:0}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+h1,h2,h3{font-family:var(--f-disp);font-weight:600;letter-spacing:.04em;text-transform:uppercase;margin:0;text-wrap:balance}
+h1{font-size:1.55rem} h1 span{color:var(--amber)}
+h2{font-size:1.02rem} h3{font-size:.86rem;color:var(--muted)}
+button,select,input{font:inherit;color:var(--fg)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;background:var(--bay-2);border:1px solid var(--rule-2);border-radius:6px;padding:6px 11px;cursor:pointer;white-space:nowrap;font-size:.92rem}
+.btn:hover{border-color:var(--muted)}
+.btn.sm{padding:3px 8px;font-size:.82rem}
+.btn.primary{background:var(--amber);color:var(--amber-ink);border-color:var(--amber);font-weight:600}
+.btn:focus-visible,select:focus-visible,input:focus-visible,.seg button:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+select{max-width:100%;background:var(--bay-2);border:1px solid var(--rule-2);border-radius:6px;padding:4px 6px;min-width:0;font-size:.86rem}
+input[type=range]{accent-color:var(--amber);width:100%;min-width:0;margin:2px 0}
+.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.muted{color:var(--muted)} .dim{color:var(--dim)}
+.seg{display:flex;border:1px solid var(--rule-2);border-radius:6px;overflow:hidden;width:100%}
+.seg button{flex:1 1 0;background:var(--bay-2);border:0;border-right:1px solid var(--rule-2);padding:5px 4px;cursor:pointer;font-size:.82rem;white-space:nowrap}
+.seg button:last-child{border-right:0}
+.seg button[aria-pressed=true]{background:var(--amber);color:var(--amber-ink);font-weight:600}
+.seg.inv button[aria-pressed=true]{background:var(--phos);color:#0b1a10}
+
+/* En-tête */
+.top{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px 24px;padding-block:16px 12px;border-bottom:1px solid var(--rule)}
+.trow{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px}
+.brand .sub{color:var(--muted);margin:2px 0 0;font-size:.92rem}
+.scen{display:flex;flex-wrap:wrap;gap:8px}
+
+/* Ligne de workflow */
+.scroller{overflow-x:auto;margin-top:6px;padding-bottom:10px;scrollbar-color:var(--rule-2) transparent}
+.hint{font-size:.78rem;color:var(--dim);margin:8px 0 0}
+.flow{--gap:50px;--col:240px;display:grid;grid-template-columns:repeat(6,minmax(var(--col),1fr));column-gap:var(--gap);min-width:calc(6*var(--col) + 5*var(--gap));position:relative;padding-top:6px}
+.flow::before{content:'';position:absolute;left:0;right:0;top:calc(6px + 88px + 117px);height:2px;background:linear-gradient(90deg,transparent,var(--rule-2) 3%,var(--rule-2) 97%,transparent)}
+.blk{display:flex;flex-direction:column;min-width:0;position:relative}
+.kw{height:88px;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;text-align:center;font-family:var(--f-disp);font-weight:600;text-transform:uppercase;letter-spacing:.04em;font-size:.98rem;line-height:1.13}
+.ico{position:relative;height:128px}
+.ico svg{display:block;width:100%;height:100%}
+.chev{position:absolute;top:44px;right:calc(-1 * var(--gap));width:var(--gap);height:28px;display:flex;align-items:center;justify-content:center;pointer-events:none}
+.chev svg{width:46px;height:24px}
+.sname{display:flex;flex-direction:column;align-items:center;gap:4px;margin-top:6px}
+.sname b{font-family:var(--f-disp);font-weight:600;font-size:1.25rem;letter-spacing:.05em;text-transform:uppercase;line-height:1}
+.sname b i{font-style:normal;color:var(--amber);margin-right:6px}
+.pill{font-family:var(--f-mono);font-size:.72rem;border:1px solid var(--pink);color:#f6a9cc;border-radius:999px;padding:2px 9px;white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis}
+.card{flex:1 1 auto;margin-top:10px;background:var(--bay);border:1px solid var(--rule);border-radius:8px;padding:10px;display:flex;flex-direction:column;gap:9px;min-width:0}
+.inst svg{display:block;width:100%;height:auto}
+.inst svg text{font-family:var(--f-mono)}
+.inst svg .tu{font-family:var(--f-ui)}
+.inst svg .td{font-family:var(--f-disp);font-weight:600;letter-spacing:.06em;text-transform:uppercase}
+.field{display:flex;flex-direction:column;gap:2px;min-width:0}
+.field>span{display:flex;justify-content:space-between;gap:6px;font-size:.7rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.field>span b{font-family:var(--f-mono);font-weight:500;letter-spacing:0;text-transform:none;color:var(--fg);font-size:.8rem}
+.g2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px 8px}
+.chips{display:flex;flex-wrap:wrap;gap:4px}
+.chips button{background:var(--bay-2);border:1px solid var(--rule-2);border-radius:999px;padding:1px 8px;font-size:.74rem;cursor:pointer;color:var(--muted)}
+.chips button:hover{color:var(--fg);border-color:var(--muted)}
+.chips button[aria-pressed=true]{color:var(--amber-ink);background:var(--amber);border-color:var(--amber)}
+.read{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font-size:.82rem;color:var(--muted);border-top:1px dashed var(--rule-2);padding-top:6px}
+.read b{font-family:var(--f-mono);font-weight:500;color:var(--fg);font-size:.86rem;white-space:nowrap}
+.note{font-size:.78rem;line-height:1.35;border-radius:6px;padding:6px 8px;border:1px solid var(--rule-2);background:var(--bay-2);color:var(--muted)}
+.note.err{border-color:#6b2e2e;color:#f3b3b3;background:#1b1112}
+.note.ok{border-color:#2f5a3c;color:#bfe8cb;background:#101a13}
+.note.wa{border-color:#6b4e2a;color:#f5cf9f;background:#1a1510}
+/* Formules */
+.fx{margin-top:auto;background:var(--bay-2);border:1px solid var(--rule);border-left:3px solid var(--amber);border-radius:6px;padding:8px 9px;font-size:.8rem;line-height:1.45;color:var(--muted)}
+.fx h3{color:var(--amber);font-size:.78rem;margin-bottom:4px}
+.fx .eq{display:block;font-family:var(--f-mono);font-size:.76rem;color:var(--fg);margin:2px 0 3px;overflow-wrap:anywhere}
+.fx .eq i{font-style:italic;font-family:Georgia,'Times New Roman',serif;font-size:.86rem}
+.fx .ex{display:block;font-family:var(--f-mono);font-size:.74rem;color:var(--phos);margin-top:4px;overflow-wrap:anywhere}
+.fx sup,.fx sub{font-size:.68em}
+/* Tableaux */
+table{border-collapse:collapse;width:100%;font-size:.74rem}
+th,td{padding:3px 3px;text-align:right;border-bottom:1px solid var(--rule);white-space:nowrap}
+th{font-family:var(--f-disp);font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);font-size:.72rem}
+th:first-child,td:first-child{text-align:left}
+td{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.tq [data-n]{cursor:pointer}
+.tq td[data-n]:hover,.tq th[data-n]:hover{background:var(--bay-3)}
+.tq .on{background:#2a2410;color:var(--amber)}
+.tq th.on{border-bottom:2px solid var(--amber)}
+.dot{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:5px;vertical-align:baseline}
+.bin{font-family:var(--f-mono);font-size:.74rem;display:grid;grid-template-columns:auto minmax(0,1fr);gap:2px 8px;align-items:baseline}
+.bin span:nth-child(odd){color:var(--muted);font-family:var(--f-ui);font-size:.76rem}
+.bin span:nth-child(even){overflow-wrap:anywhere;color:var(--fg);letter-spacing:.02em}
+.clip{color:var(--bad)!important}
+/* Synthèse */
+.bay{margin-top:18px;background:var(--bay);border:1px solid var(--rule);border-radius:8px;padding:12px;min-width:0}
+.bay-head{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;margin-bottom:10px}
+.bay-head h2{margin-right:auto}
+.tw{overflow-x:auto}
+.syn td,.syn th{padding:5px 8px;font-size:.84rem}
+.notes{color:var(--muted);font-size:.86rem;max-width:120ch;margin-top:16px}
+.notes h3{margin-bottom:6px;color:var(--amber)}
+.notes p{margin:0 0 8px}
+.notes b{color:var(--fg)}
+/* Plein écran d'un bloc */
+.fsrow{display:flex;justify-content:flex-end;margin:-2px 0 -4px}
+.fsrow .btn{padding:2px 8px;font-size:.78rem}
+.blk.fs{position:fixed;inset:0;z-index:50;background:var(--bg);overflow:auto;padding:18px 28px 28px;display:block}
+.blk.fs::backdrop{background:var(--bg)}
+.blk.fs .chev{display:none}
+.blk.fs{display:grid;grid-template-columns:minmax(0,1fr) 300px minmax(0,1fr);grid-template-rows:auto auto;align-items:center;column-gap:24px}
+.blk.fs>.kw{grid-column:1;grid-row:1;height:auto;font-size:1.3rem;align-items:flex-end;text-align:right}
+.blk.fs>.ico{grid-column:2;grid-row:1;height:150px}
+.blk.fs>.sname{grid-column:3;grid-row:1;align-items:flex-start;margin:0}
+.blk.fs>.card{grid-column:1/-1;grid-row:2}
+.blk.fs .sname b{font-size:1.8rem}
+.blk.fs .pill{font-size:.9rem}
+.blk.fs .card{display:grid;grid-template-columns:repeat(auto-fit,minmax(360px,1fr));gap:16px 26px;align-items:start;max-width:1500px;margin:16px auto 0;padding:18px;font-size:1.08rem}
+.blk.fs .card>.fsrow{grid-column:1/-1;margin:0}
+.blk.fs .fx{margin-top:0;font-size:.95rem}
+.blk.fs .fx .eq{font-size:.92rem}
+.blk.fs .fx .ex{font-size:.88rem}
+.blk.fs table{font-size:.92rem}
+.blk.fs .note,.blk.fs .read{font-size:.95rem}
+.blk.fs .bin{font-size:.9rem}
+.blk.fs .seg button{font-size:.95rem;padding:7px 6px}
+@media (max-width:760px){
+  .flow{grid-template-columns:minmax(0,1fr);min-width:0;row-gap:30px}
+  .flow::before,.chev{display:none}
+  .kw{height:auto;margin-bottom:6px}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head><body>
+
+<header class="top">
+  <div class="brand">
+    <div class="trow"><h1>Workflow du photon au photon <span>- JC FOUCHE 2026 - www.savoirnumerique.com</span></h1><button class="btn sm" id="pageFS" type="button" aria-pressed="false" title="Afficher toute la page en plein écran (Échap pour revenir)">⛶ Plein écran</button></div>
+    <p class="sub">Éclairement → luminance → tension → bits → diffusion → écran → œil · SDR relatif (Rec.709) ou HDR absolu (Rec.2100 PQ)</p>
+  </div>
+  <div class="scen">
+    <button class="btn" id="scExpo" type="button" title="Règle le diaph (et le filtre ND ou les ISO si besoin) pour placer le gris 18 % à sa valeur nominale">Exposer le gris à 18 %</button>
+    <button class="btn" id="scSDR" type="button">Chaîne SDR · Rec.709</button>
+    <button class="btn" id="scHDR" type="button">Chaîne HDR · Rec.2100 PQ</button>
+    <button class="btn" id="scReset" type="button">Réinitialiser</button>
+  </div>
+</header>
+<p class="hint" id="hint">Les 6 blocs sont alignés sur la même ligne d'horizon : faites défiler horizontalement si l'écran est trop étroit.</p>
+
+<div class="scroller">
+<div class="flow">
+
+  <!-- 01 SOURCE -->
+  <article class="blk">
+    <div class="kw">Projecteur HMI<br>Lumens → lux<br>Inverse du carré</div>
+    <div class="ico" id="ic1"></div>
+    <div class="sname"><b><i>01</i>Source</b><span class="pill" id="o1"></span></div>
+    <div class="card">
+      <div class="inst" id="in1"></div>
+      <label class="field"><span>Flux du projecteur <b id="lmV"></b></span><input type="range" id="luxR" min="0" max="1000" step="1" aria-label="Flux lumineux du projecteur en lumens"></label>
+      <div class="chips" id="luxP"></div>
+      <div class="read"><span>Distance projecteur → cellule</span><b>10 m</b></div>
+      <div class="read" style="border-top:0;padding-top:0"><span>Ouverture du faisceau</span><b>20°</b></div>
+      <div class="read" style="border-top:0;padding-top:0"><span>Intensité lumineuse <i>I</i></span><b id="cdV"></b></div>
+      <div class="read" style="border-top:0;padding-top:0"><span>Éclairement reçu <i>E</i></span><b id="luxV" style="color:var(--phos)"></b></div>
+      <div class="read" style="border-top:0;padding-top:0"><span>Indice de lumination (ISO 100)</span><b id="ev"></b></div>
+      <div class="fx" id="fx1"></div>
+    </div>
+  </article>
+
+  <!-- 02 SCÈNE -->
+  <article class="blk">
+    <div class="kw">Charte de gris<br>Réflectance<br>Luminance · nits</div>
+    <div class="ico" id="ic2"></div>
+    <div class="sname"><b><i>02</i>Scène</b><span class="pill" id="o2"></span></div>
+    <div class="card">
+      <div class="inst" id="in2"></div>
+      <div class="read" style="border-top:0;padding-top:0"><span>Spotmètre visé sur <span id="aimN" style="color:var(--fg)"></span></span><b id="aimV"></b></div>
+      <p class="dim" style="margin:-4px 0 0;font-size:.74rem">Cliquez sur une zone de la charte pour viser le spotmètre.</p>
+      <label class="field"><span>Spéculaire · réflectance équivalente <b id="specV"></b></span><input type="range" id="specR" min="0" max="1000" step="1" aria-label="Réflectance équivalente du spéculaire"></label>
+      <div class="fx" id="fx2"></div>
+    </div>
+  </article>
+
+  <!-- 03 CAPTATION -->
+  <article class="blk">
+    <div class="kw">Diaph · exposition<br>Gamma<br>Volts</div>
+    <div class="ico" id="ic3"></div>
+    <div class="sname"><b><i>03</i>Captation</b><span class="pill" id="o3"></span></div>
+    <div class="card">
+      <div style="display:grid;grid-template-columns:92px minmax(0,1fr);gap:10px;align-items:center">
+        <div class="inst" id="iris"></div>
+        <div style="display:flex;flex-direction:column;gap:3px;font-size:.8rem">
+          <span class="muted">Ouverture</span><b class="mono" id="fnum" style="font-size:1.4rem;color:var(--amber);line-height:1"></b>
+          <span id="expo" class="mono" style="font-size:.76rem"></span>
+        </div>
+      </div>
+      <label class="field"><span>Diaphragme <b id="kV"></b></span><input type="range" id="kR" min="0" max="72" step="1" aria-label="Diaphragme"></label>
+      <div class="g2">
+        <label class="field"><span>ISO <b id="isoV"></b></span><input type="range" id="isoR" min="0" max="15" step="1" aria-label="Sensibilité ISO"></label>
+        <label class="field"><span>Filtre ND</span><select id="ndS"></select></label>
+      </div>
+      <label class="field"><span>Obturation (25 i/s)</span><select id="shS"></select></label>
+      <div class="inst" id="in3"></div>
+      <div class="seg" id="camSeg" role="group" aria-label="Courbe de gamma de la caméra">
+        <button type="button" data-v="lin">Gamma OFF</button><button type="button" data-v="sdr">SDR · BT.1886</button><button type="button" data-v="hdr">HDR · PQ</button>
+      </div>
+      <div class="field" id="sdrcF"><span>Courbe SDR de la caméra</span>
+        <div class="seg inv" id="sdrcSeg" role="group" aria-label="Courbe SDR de la caméra"><button type="button" data-v="g24">Inverse BT.1886</button><button type="button" data-v="bt709">OETF BT.709</button></div></div>
+      <div class="note" id="n3"></div>
+      <div class="fx" id="fx3"></div>
+    </div>
+  </article>
+
+  <!-- 04 NUMÉRISATION -->
+  <article class="blk">
+    <div class="kw">Convertisseur A/N<br>Quantification<br>Bits</div>
+    <div class="ico" id="ic4"></div>
+    <div class="sname"><b><i>04</i>Numérisation</b><span class="pill" id="o4"></span></div>
+    <div class="card">
+      <div class="seg inv" id="rgSeg" role="group" aria-label="Plage de codage">
+        <button type="button" data-v="legal">Plage légale (vidéo)</button><button type="button" data-v="full">Plage pleine</button>
+      </div>
+      <div class="tw"><table class="tq" id="tq"></table></div>
+      <p class="dim" style="margin:-4px 0 0;font-size:.74rem">Cliquez sur une colonne pour choisir la profondeur d'enregistrement.</p>
+      <div class="bin" id="bin"></div>
+      <div class="read"><span>Codes entre noir et gris 18 %</span><b id="lev"></b></div>
+      <div class="read" style="border-top:0;padding-top:0"><span>Pas de quantification</span><b id="stepq"></b></div>
+      <div class="note" id="n4"></div>
+      <div class="fx" id="fx4"></div>
+    </div>
+  </article>
+
+  <!-- 05 DIFFUSION -->
+  <article class="blk">
+    <div class="kw">Transport<br>Compression<br>SDR · HDR</div>
+    <div class="ico" id="ic5"></div>
+    <div class="sname"><b><i>05</i>Diffusion</b><span class="pill" id="o5"></span></div>
+    <div class="card">
+      <div class="seg" id="trSeg" role="group" aria-label="Format de diffusion">
+        <button type="button" data-v="sdr">SDR · Rec.709</button><button type="button" data-v="hdr">HDR · PQ</button>
+      </div>
+      <div class="field" id="sdrcF"><span>Courbe SDR de la caméra</span>
+        <div class="seg inv" id="sdrcSeg" role="group" aria-label="Courbe SDR de la caméra"><button type="button" data-v="g24">Inverse BT.1886</button><button type="button" data-v="bt709">OETF BT.709</button></div></div>
+      <div class="inst" id="in5"></div>
+      <div class="mono" id="fmt5" style="font-size:.74rem;color:var(--muted);line-height:1.5"></div>
+      <div class="tw"><table id="t5"></table></div>
+      <div class="note" id="n5"></div>
+      <div class="fx" id="fx5"></div>
+    </div>
+  </article>
+
+  <!-- 06 AFFICHAGE -->
+  <article class="blk">
+    <div class="kw">Écran plat<br>EOTF<br>Nits · œil</div>
+    <div class="ico" id="ic6"></div>
+    <div class="sname"><b><i>06</i>Affichage</b><span class="pill" id="o6"></span></div>
+    <div class="card">
+      <div class="seg" id="dpSeg" role="group" aria-label="Type d'écran">
+        <button type="button" data-v="sdr">SDR</button><button type="button" data-v="h1000">HDR 1 000</button><button type="button" data-v="h10000">HDR 10 000</button>
+      </div>
+      <div class="inst" id="in6"></div>
+      <div><h3 style="color:var(--amber);margin:2px 0 6px">Oscilloscope de l'écran · nits linéaires</h3>
+      <div class="inst" id="in6s"></div></div>
+      <label class="field" id="peakF"><span>Pic de l'écran SDR <b id="peakV"></b></span><input type="range" id="peakR" min="80" max="500" step="10" aria-label="Luminance maximale de l'écran SDR"></label>
+      <div class="note" id="n6"></div>
+      <div class="fx" id="fx6"></div>
+    </div>
+  </article>
+
+</div>
+</div>
+
+<section class="bay" aria-labelledby="hS">
+  <div class="bay-head"><h2 id="hS">Synthèse · chaque zone de la charte, du soleil à l'œil</h2><span class="mono dim" id="synInfo" style="font-size:.76rem"></span></div>
+  <div class="tw"><table class="syn" id="syn"></table></div>
+</section>
+
+<section class="notes">
+  <h3>Pistes pédagogiques</h3>
+  <p><b>1 · La lumière change, l'image aussi.</b> Passez du HMI 18 kW (100 000 lx à 10 m) au HMI 2,5 kW (≈ 14 500 lx) sans toucher la caméra : toutes les luminances de la scène sont divisées par 7, le signal chute de 2,8 diaphs et l'écran s'assombrit. Rouvrez le diaph (ou retirez du ND) pour ramener le gris à sa place : l'écran retrouve exactement les mêmes nits. La caméra mesure une exposition, pas une luminance absolue.</p>
+  <p><b>2 · Relatif contre absolu.</b> En SDR, le signal est exprimé en % du pic de l'écran : changez le pic de l'écran SDR de 100 à 300 nits et toutes les zones montent ensemble (blanc, gris et noir). En HDR PQ, un code correspond à une luminance fixe : le gris reste au même nombre de nits sur l'écran 1 000 et sur l'écran 10 000, seuls les spéculaires changent.</p>
+  <p><b>3 · Les spéculaires.</b> En Gamma OFF et en SDR, tout ce qui dépasse le blanc 100 % est écrêté à 0,7 V dans la caméra. En PQ, le spéculaire passe : il est écrêté par l'écran 1 000 nits mais affiché sur l'écran 10 000 nits. Augmentez la réflectance du spéculaire pour trouver la limite.</p>
+  <p><b>4 · Pourquoi un gamma ?</b> En Gamma OFF, enregistrez en 8 bits : regardez combien de codes restent entre le noir et le gris 18 %, puis comparez avec le SDR et le PQ. Le gamma donne plus de codes aux ombres, là où l'œil distingue le mieux les écarts.</p>
+  <p><b>5 · Les erreurs de chaîne.</b> Diffusez en HDR PQ et regardez sur l'écran SDR : il lit le signal PQ comme du Rec.709 et l'image paraît délavée. Diffusez en SDR et regardez sur l'écran HDR : il repasse en mode SDR, sans gain. Le signal n'est jamais converti : choisissez une courbe caméra différente de la diffusion, par exemple Gamma OFF en 03 et SDR en 05, et observez l'image sans gamma, très sombre, à l'écran.</p>
+  <p class="dim" style="font-size:.78rem">Hypothèses simplifiées : surfaces mates (lambertiennes) sauf le spéculaire, objectif sans perte (T = 1), constante de posemètre K = 12,5, blanc diffus 100 % placé à 203 nits en PQ (UIT-R BT.2408), courbe SDR de la caméra par défaut égale à l'inverse exacte de BT.1886 (option OETF BT.709 réelle, gamma système ≈ 1,2), noir de l'écran à 0 nit, écran HDR qui écrête sans tone mapping. Le rendu des zones à l'écran est symbolique : la luminosité suit l'échelle PQ, le blanc de votre écran représentant 10 000 nits.</p>
+</section>
+
+<script>
+'use strict';
+/* ===================== outils ===================== */
+const $ = s => document.querySelector(s);
+const clamp = (v, a, b) => v < a ? a : (v > b ? b : v);
+const fr = (n, d = 0) => Number.isFinite(n) ? n.toLocaleString('fr-FR', { minimumFractionDigits: d, maximumFractionDigits: d }).replace('-', '−') : '—';
+function nits(n) { if (!Number.isFinite(n)) return '—'; const a = Math.abs(n); return a >= 100 ? fr(n, 0) : a >= 10 ? fr(n, 1) : a >= 1 ? fr(n, 2) : fr(n, 3); }
+function r3(n) { if (n <= 0) return 0; const p = Math.pow(10, Math.floor(Math.log10(n)) - 2); return Math.round(n / p) * p; }
+function mixHex(a, b, t) { const p = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16)); const A = p(a), B = p(b); return '#' + A.map((v, i) => Math.round(v + (B[i] - v) * t).toString(16).padStart(2, '0')).join(''); }
+const gray = v => { const g = Math.round(clamp(v, 0, 1) * 255).toString(16).padStart(2, '0'); return '#' + g + g + g; };
+
+/* ===================== courbes de transfert ===================== */
+const PQ = { m1: 2610 / 16384, m2: 2523 / 4096 * 128, c1: 3424 / 4096, c2: 2413 / 4096 * 32, c3: 2392 / 4096 * 32 };
+function pqEnc(n) { const y = Math.max(n, 0) / 10000, p = Math.pow(y, PQ.m1); return Math.pow((PQ.c1 + PQ.c2 * p) / (1 + PQ.c3 * p), PQ.m2); }
+function pqDec(v) { const p = Math.pow(Math.max(v, 0), 1 / PQ.m2); return 10000 * Math.pow(Math.max(p - PQ.c1, 0) / (PQ.c2 - PQ.c3 * p), 1 / PQ.m1); }
+const oetf709 = Y => Y < 0.018 ? 4.5 * Math.max(Y, 0) : 1.099 * Math.pow(Y, 0.45) - 0.099;
+const inv709 = E => E < 0.081 ? E / 4.5 : Math.pow((E + 0.099) / 1.099, 1 / 0.45);
+const REFW = 203; /* blanc diffus 100 % en PQ (BT.2408) */
+const g24 = Y => Math.pow(Math.max(Y, 0), 1 / 2.4);
+const sdrEnc = Y => S.sdrc === 'bt709' ? oetf709(Y) : g24(Y);
+const sdrDec = E => S.sdrc === 'bt709' ? inv709(E) : Math.pow(Math.max(E, 0), 2.4);
+function enc(m, Y) { return m === 'lin' ? Y : m === 'sdr' ? sdrEnc(Y) : pqEnc(Y * REFW); }
+function dec(m, s) { return m === 'lin' ? s : m === 'sdr' ? sdrDec(s) : pqDec(s) / REFW; }
+function code(e, n, r) { e = clamp(e, 0, 1); return r === 'legal' ? Math.round((16 + 219 * e) * Math.pow(2, n - 8)) : Math.round(e * (Math.pow(2, n) - 1)); }
+function decode(D, n, r) { return r === 'legal' ? clamp((D / Math.pow(2, n - 8) - 16) / 219, 0, 1) : D / (Math.pow(2, n) - 1); }
+const binStr = (D, n) => D.toString(2).padStart(n, '0').replace(/(\d{4})(?=\d)/g, '$1 ');
+
+/* ===================== données ===================== */
+const PATCH = [
+  { n: 'Noir', s: '3 %', rho: 0.03, c: '#6c78e6', f: '#303030' },
+  { n: 'Gris 18 %', s: '18 %', rho: 0.18, c: '#8fd16b', f: '#767676' },
+  { n: 'Blanc 90 %', s: '90 %', rho: 0.90, c: '#e2e4ea', f: '#f3f3f3' },
+  { n: 'Spéculaire', s: 'spéc.', rho: 10, c: '#f5c542', f: '#e9b93a' },
+];
+/* ordre d'affichage : du plus clair (haut) au plus foncé (bas) */
+const ORD = [3, 2, 1, 0];
+const ROW = i => ORD.indexOf(i);
+const FL = ['1,4', '1,6', '1,8', '2', '2,2', '2,5', '2,8', '3,2', '3,5', '4', '4,5', '5', '5,6', '6,3', '7,1', '8', '9', '10', '11', '13', '14', '16', '18', '20', '22'];
+const KMAX = 72; /* f/1,4 → f/22, pas de 1/9 de diaph */
+const fN = k => Math.pow(Math.SQRT2, 1 + k / 9);
+const fLab = k => k % 3 === 0 ? FL[k / 3] : fr(fN(k), 1);
+const ISOS = [100, 125, 160, 200, 250, 320, 400, 500, 640, 800, 1000, 1250, 1600, 2000, 2500, 3200];
+const NDS = [0, 0.3, 0.6, 0.9, 1.2, 1.5, 1.8, 2.1, 2.4];
+const SHS = [25, 50, 100, 200, 500, 1000];
+const DEPTHS = [8, 10, 12, 16];
+const TRF = {
+  sdr: { bits: 8, rate: 15e6, label: 'Rec.709 · BT.1886 · 8 bits · 4:2:0 · HEVC · UHD 25p · 15 Mb/s' },
+  hdr: { bits: 10, rate: 20e6, label: 'Rec.2100 PQ · 10 bits · 4:2:0 · HEVC Main 10 · UHD 25p · 20 Mb/s · métadonnées MaxCLL / MaxFALL' },
+};
+/* Projecteur HMI à 10 m, faisceau de 20° : E = I / d², I = Φ / Ω */
+const HMI_D = 10, HMI_A = 20, HMI_OM = 2 * Math.PI * (1 - Math.cos(HMI_A / 2 * Math.PI / 180));
+const LM_K = HMI_OM * HMI_D * HMI_D;           /* E = Φ / (Ω·d²) */
+const LM_MAX = 100000 * LM_K, LM_MIN = 10;      /* plafond : 100 000 lx */
+const lmToLux = lm => lm / LM_K;
+const HMIS = [['575 W', 31700], ['1,2 kW', 66000], ['2,5 kW', 138000], ['4 kW', 220000], ['6 kW', 330000], ['12 kW', 661000], ['18 kW', LM_MAX]];
+const DEF = { lm: LM_MAX, lux: 100000, spec: 10, aim: 1, k: 54, iso: 9, nd: 6, sh: 1, cam: 'sdr', sdrc: 'g24', range: 'legal', depth: 10, tr: 'sdr', disp: 'sdr', peak: 100 };
+const S = Object.assign({}, DEF);
+const SPEC_MIN = 1, SPEC_MAX = 50; /* réflectance équivalente 100 % → 5 000 % */
+
+/* ===================== calcul de la chaîne ===================== */
+function calc() {
+  const t = 1 / SHS[S.sh], T = Math.pow(10, -NDS[S.nd]), N = fN(S.k), iso = ISOS[S.iso];
+  const P = PATCH.map((p, i) => Object.assign({}, p, { rho: i === 3 ? S.spec : p.rho }));
+  for (const p of P) {
+    p.L = S.lux * p.rho / Math.PI;
+    p.Ec = Math.PI * p.L * T / (4 * N * N);
+    p.Y = 0.18 * p.L * t * iso * T / (12.5 * N * N);
+    p.e = enc(S.cam, p.Y); p.clip3 = p.e > 1 + 1e-9; p.e3 = clamp(p.e, 0, 1); p.V = 0.7 * p.e3; p.Vraw = 0.7 * p.e;
+    p.codes = {}; for (const n of DEPTHS) p.codes[n] = code(p.e3, n, S.range);
+    p.s4 = decode(p.codes[S.depth], S.depth, S.range);
+    const b5 = TRF[S.tr].bits;
+    p.clip5 = false; p.e5 = p.s4;
+    p.c5 = code(p.e5, b5, 'legal'); p.s5 = decode(p.c5, b5, 'legal');
+    p.clip6 = false;
+    if (S.disp === 'sdr') p.Ld = S.peak * Math.pow(p.s5, 2.4);
+    else if (S.tr === 'hdr') { const cap = S.disp === 'h1000' ? 1000 : 10000, l = pqDec(p.s5); p.clip6 = l > cap + 0.5; p.Ld = Math.min(l, cap); }
+    else p.Ld = 100 * Math.pow(p.s5, 2.4);
+    p.clipAny = p.clip3 || p.clip5 || p.clip6;
+  }
+  return { P, t, T, N, iso };
+}
+
+/* ===================== icônes (ligne d'horizon à y = 117) ===================== */
+const ICO = '#d4d9de', DARK = '#121518';
+const chev = `<div class="chev" aria-hidden="true"><svg viewBox="0 0 60 30"><path d="M0 5h5l9 10-9 10H0l9-10z" fill="#f7c9de"/><path d="M11 5h5l9 10-9 10h-5l9-10z" fill="#f29cc3"/><path d="M22 5h5l9 10-9 10h-5l9-10z" fill="#ee6aa7"/><path d="M34 2h10l14 13-14 13H34l12-13z" fill="#ec3a8c"/></svg></div>`;
+function icSun(E) {
+  const k = clamp(Math.log10(Math.max(S.lm, LM_MIN) / LM_MIN) / Math.log10(LM_MAX / LM_MIN), 0, 1);
+  return `<svg viewBox="0 0 240 128" aria-hidden="true"><defs>
+  <linearGradient id="bm" x1="0" x2="1" y1="0" y2="0"><stop offset="0" stop-color="#ffe9a0" stop-opacity=".9"/><stop offset="1" stop-color="#ffd76a" stop-opacity="0"/></linearGradient>
+  <radialGradient id="sg"><stop offset="0" stop-color="#fff2c0" stop-opacity="1"/><stop offset="1" stop-color="#ffd76a" stop-opacity="0"/></radialGradient></defs>
+  <path d="M104 40 L236 ${30 - 22 * k} L236 ${78 + 22 * k} L104 68 Z" fill="url(#bm)" opacity="${0.12 + 0.88 * k}"/>
+  <circle cx="104" cy="54" r="${14 + 22 * k}" fill="url(#sg)" opacity="${0.2 + 0.8 * k}"/>
+  <path d="M100 33 l14 -10 M100 75 l14 10" stroke="${ICO}" stroke-width="4" stroke-linecap="round"/>
+  <rect x="46" y="32" width="56" height="44" rx="6" fill="${ICO}"/>
+  <path d="M54 32 v-6 h16 v6 M58 40 h30 M58 48 h30 M58 56 h30 M58 64 h30" stroke="${DARK}" stroke-width="2.5" fill="none"/>
+  <ellipse cx="102" cy="54" rx="5" ry="20" fill="${mixHex('#6a5a30', '#fff6d0', k)}" stroke="${ICO}" stroke-width="2"/>
+  <path d="M60 76 L60 88 M88 76 L88 88 M60 88 H88" stroke="${ICO}" stroke-width="4" fill="none"/>
+  <line x1="74" y1="88" x2="74" y2="104" stroke="${ICO}" stroke-width="5"/>
+  <path d="M74 104 L56 117 M74 104 L92 117 M74 104 V117" stroke="${ICO}" stroke-width="4" stroke-linecap="round"/>
+  <text x="170" y="108" text-anchor="middle" fill="#8e979f" style="font-family:var(--f-mono);font-size:10px">← 10 m →</text></svg>`;
+}
+function icChart() {
+  return `<svg viewBox="0 0 240 128" aria-hidden="true">
+  <line x1="104" y1="92" x2="90" y2="117" stroke="${ICO}" stroke-width="4" stroke-linecap="round"/><line x1="136" y1="92" x2="150" y2="117" stroke="${ICO}" stroke-width="4" stroke-linecap="round"/><line x1="120" y1="92" x2="120" y2="117" stroke="${ICO}" stroke-width="4" stroke-linecap="round"/>
+  <rect x="74" y="16" width="92" height="76" rx="3" fill="${ICO}"/>
+  <rect x="80" y="22" width="20" height="64" fill="#303030"/><rect x="100" y="22" width="20" height="64" fill="#767676"/><rect x="120" y="22" width="20" height="64" fill="#f3f3f3"/><rect x="140" y="22" width="20" height="64" fill="#e9b93a"/>
+  <path d="M150 34 l2.5 7 7 2.5-7 2.5-2.5 7-2.5-7-7-2.5 7-2.5z" fill="#fff6d0"/></svg>`;
+}
+function icCam(P) {
+  let tr = ''; P.forEach((p, i) => { const y = 68 - p.e3 * 24; tr += `<line x1="${187 + i * 8}" y1="${y}" x2="${193 + i * 8}" y2="${y}" stroke="${p.clip3 ? '#ef6b6b' : p.c}" stroke-width="2"/>`; });
+  return `<svg viewBox="0 0 240 128" aria-hidden="true">
+  <path d="M24 38 L48 46 L48 84 L24 92 Z" fill="${ICO}"/>
+  <rect x="48" y="52" width="42" height="26" rx="3" fill="${ICO}"/><line x1="58" y1="52" x2="58" y2="78" stroke="${DARK}" stroke-width="2"/><line x1="70" y1="52" x2="70" y2="78" stroke="${DARK}" stroke-width="2"/>
+  <rect x="90" y="36" width="92" height="60" rx="6" fill="${ICO}"/>
+  <rect x="104" y="20" width="58" height="8" rx="3" fill="${ICO}"/><rect x="108" y="26" width="6" height="12" fill="${ICO}"/><rect x="152" y="26" width="6" height="12" fill="${ICO}"/>
+  <circle cx="112" cy="66" r="9" fill="none" stroke="${DARK}" stroke-width="2"/><rect x="128" y="50" width="40" height="5" rx="2" fill="${DARK}"/><rect x="128" y="60" width="28" height="4" rx="2" fill="${DARK}"/>
+  <rect x="182" y="38" width="40" height="36" rx="3" fill="${ICO}"/><rect x="185" y="41" width="34" height="30" fill="#060708"/>${tr}
+  <rect x="98" y="96" width="76" height="6" fill="${ICO}"/><line x1="136" y1="102" x2="118" y2="117" stroke="${ICO}" stroke-width="4"/><line x1="136" y1="102" x2="154" y2="117" stroke="${ICO}" stroke-width="4"/><line x1="136" y1="102" x2="136" y2="117" stroke="${ICO}" stroke-width="4"/></svg>`;
+}
+function icPC() {
+  return `<svg viewBox="0 0 240 128" aria-hidden="true">
+  <rect x="58" y="12" width="104" height="70" rx="5" fill="none" stroke="${ICO}" stroke-width="6"/>
+  <text x="110" y="45" text-anchor="middle" fill="${ICO}" style="font-family:var(--f-disp);font-weight:600;font-size:20px;letter-spacing:1px">A → N</text>
+  <text x="110" y="66" text-anchor="middle" fill="${ICO}" opacity=".7" style="font-family:var(--f-mono);font-size:10px">0110 1001</text>
+  <path d="M100 82 h20 l4 14 h-28z" fill="${ICO}"/><path d="M62 104 h96 l8 13 h-112z" fill="${ICO}"/>
+  <path d="M70 108h80M66 112h88" stroke="${DARK}" stroke-width="1.5" stroke-dasharray="4 2"/>
+  <rect x="174" y="26" width="38" height="91" rx="3" fill="none" stroke="${ICO}" stroke-width="5"/><path d="M182 40h22M182 48h22" stroke="${ICO}" stroke-width="3"/><circle cx="193" cy="100" r="4" fill="${ICO}"/></svg>`;
+}
+function icSat(hdr) {
+  const col = hdr ? '#e8b84a' : '#86e0a2';
+  const x0 = 80, y0 = 49, x1 = 172, y1 = 27, dx = x1 - x0, dy = y1 - y0, len = Math.hypot(dx, dy), nx = -dy / len, ny = dx / len;
+  let wave = '';
+  for (let k = 0; k <= 120; k++) { const t = k / 120, a = 5 * Math.sin(t * 2 * Math.PI * 5.5); wave += (k ? 'L' : 'M') + (x0 + dx * t + nx * a).toFixed(1) + ' ' + (y0 + dy * t + ny * a).toFixed(1); }
+  return `<svg viewBox="0 0 240 128" aria-hidden="true">
+  <path d="M22 50 Q36 92 82 84 Z" fill="${ICO}"/><line x1="52" y1="70" x2="74" y2="52" stroke="${ICO}" stroke-width="3"/><circle cx="75" cy="51" r="4" fill="${ICO}"/>
+  <path d="M52 78 L60 117 M52 78 L44 117 M40 117 h24" stroke="${ICO}" stroke-width="4" fill="none"/>
+  <path d="${wave}" stroke="${col}" stroke-width="2.5" fill="none" stroke-linejoin="round" stroke-linecap="round"/>
+  <g transform="rotate(-18 190 30)"><rect x="181" y="20" width="18" height="22" rx="2" fill="${ICO}"/><rect x="146" y="25" width="33" height="12" fill="none" stroke="${ICO}" stroke-width="3"/><rect x="201" y="25" width="33" height="12" fill="none" stroke="${ICO}" stroke-width="3"/>
+  <path d="M157 25v12M168 25v12M212 25v12M223 25v12" stroke="${ICO}" stroke-width="2"/><line x1="190" y1="42" x2="190" y2="50" stroke="${ICO}" stroke-width="3"/></g></svg>`;
+}
+function icScreen() {
+  const t = S.disp === 'sdr' ? 'REC709' : 'REC2100', s = S.disp === 'sdr' ? `BT.1886 · ${S.peak} nits` : S.disp === 'h1000' ? 'PQ · 1 000 nits' : 'PQ · 10 000 nits';
+  return `<svg viewBox="0 0 240 128" aria-hidden="true">
+  <rect x="44" y="8" width="152" height="88" rx="5" fill="none" stroke="${ICO}" stroke-width="7"/>
+  <text x="120" y="56" text-anchor="middle" fill="${ICO}" style="font-family:var(--f-disp);font-weight:600;font-size:30px;letter-spacing:1px">${t}</text>
+  <text x="120" y="78" text-anchor="middle" fill="${S.disp === 'sdr' ? '#86e0a2' : '#e8b84a'}" style="font-family:var(--f-mono);font-size:11px">${s}</text>
+  <path d="M108 99 h24 l6 12 h-36z" fill="${ICO}"/><rect x="84" y="110" width="72" height="7" rx="3" fill="${ICO}"/></svg>`;
+}
+
+/* ===================== instruments ===================== */
+function inLux(E) {
+  const k = clamp(Math.log10(Math.max(E, 1)) / 5.1, 0, 1), nr = 3 + Math.round(6 * k); let rays = '';
+  for (let i = 0; i < nr; i++) { const x = 40 + i * (160 / Math.max(nr - 1, 1)); rays += `<line x1="${x}" y1="2" x2="${120 + (x - 120) * 0.12}" y2="58" stroke="#f3c74e" stroke-width="1.6" stroke-dasharray="4 4" opacity="${0.35 + 0.65 * k}"/>`; }
+  const v = fr(r3(E), E < 10 ? 1 : 0);
+  return `<svg viewBox="0 0 240 150" role="img" aria-label="Luxmètre : ${v} lux">${rays}
+  <text x="8" y="48" fill="#8e979f" class="tu" style="font-size:9.5px">HMI à 10 m</text>
+  <path d="M104 70 a16 16 0 0 1 32 0 z" fill="#f4f4f4" stroke="${ICO}" stroke-width="1.5"/>
+  <rect x="68" y="70" width="104" height="70" rx="10" fill="#1e2328" stroke="${ICO}" stroke-width="2"/>
+  <rect x="80" y="82" width="80" height="32" rx="3" fill="#0f1a12" stroke="#2f5a3c"/>
+  <text x="154" y="105" text-anchor="end" fill="#86e0a2" style="font-size:16px">${v}</text>
+  <text x="120" y="132" text-anchor="middle" fill="#8e979f" class="td" style="font-size:10px">Luxmètre · lx</text></svg>`;
+}
+function inSpot(P) {
+  let g = '';
+  P.forEach((p, i) => {
+    const y = 8 + ROW(i) * 50, cy = y + 21, aim = i === S.aim, w = 1 + clamp(Math.log10(p.L + 1) / 5.5, 0, 1) * 6, xe = 168;
+    const star = i === 3 ? `<path d="M29 ${cy - 11} l3 8 8 3-8 3-3 8-3-8-8-3 8-3z" fill="#fff6d0"/>` : '';
+    g += `<g data-i="${i}" style="cursor:pointer"><rect x="2" y="${y - 2}" width="236" height="46" fill="transparent"/>
+    <rect x="6" y="${y}" width="46" height="42" rx="2" fill="${p.f}" stroke="${aim ? '#e8b84a' : '#333a42'}" stroke-width="${aim ? 2 : 1}"/>${star}
+    <text x="29" y="${y + 38}" text-anchor="middle" fill="${i === 0 ? '#e6e9ec' : '#121518'}" style="font-size:9px">${p.s}</text>
+    <line x1="56" y1="${cy}" x2="${xe - 7}" y2="${cy}" stroke="${p.c}" stroke-width="${w}" opacity="${aim ? 1 : 0.75}"/>
+    <path d="M${xe - 9} ${cy - 3 - w} L${xe} ${cy} L${xe - 9} ${cy + 3 + w} z" fill="${p.c}"/>
+    <text x="${(56 + xe) / 2}" y="${cy - 5 - w / 2}" text-anchor="middle" fill="${p.c}" style="font-size:10.5px">${nits(p.L)} nits</text>
+    <rect x="168" y="${cy - 6}" width="12" height="12" rx="2" fill="${ICO}"/><rect x="180" y="${cy - 12}" width="56" height="24" rx="5" fill="${ICO}" stroke="${aim ? '#e8b84a' : 'none'}" stroke-width="2"/>
+    <rect x="193" y="${cy + 10}" width="10" height="11" rx="3" fill="${ICO}" transform="rotate(12 198 ${cy + 10})"/><rect x="184" y="${cy - 8}" width="48" height="15" rx="2" fill="#0f1a12"/>
+    <text x="229" y="${cy + 3}" text-anchor="end" fill="#86e0a2" style="font-size:8.5px">${nits(p.L)}</text></g>`;
+  });
+  return `<svg viewBox="0 0 240 208" role="img" aria-label="Charte de gris et spotmètres">${g}</svg>`;
+}
+function inIris(N, k) {
+  const R = 46, r = Math.max(2.5, 40 * 1.4 / N), rot = k * 3 * Math.PI / 180, nb = 7, pts = []; let bl = '';
+  for (let i = 0; i < nb; i++) { const a = rot + i * 2 * Math.PI / nb; pts.push([50 + r * Math.cos(a), 50 + r * Math.sin(a)]); }
+  pts.forEach(([x, y], i) => { const a = rot + i * 2 * Math.PI / nb + 1.3; bl += `<line x1="${x.toFixed(1)}" y1="${y.toFixed(1)}" x2="${(50 + R * Math.cos(a)).toFixed(1)}" y2="${(50 + R * Math.sin(a)).toFixed(1)}" stroke="#0c0e10" stroke-width="1.6"/>`; });
+  return `<svg viewBox="0 0 100 100" role="img" aria-label="Diaphragme"><circle cx="50" cy="50" r="49" fill="#0a0b0c" stroke="${ICO}" stroke-width="2"/><circle cx="50" cy="50" r="${R}" fill="#3a424a"/>${bl}
+  <polygon points="${pts.map(p => p.map(v => v.toFixed(1)).join(',')).join(' ')}" fill="#f4dd9a" stroke="#0c0e10" stroke-width="1"/></svg>`;
+}
+function inScope(P) {
+  const X0 = 40, X1 = 196, yV = V => 12 + (0.8 - V) / 0.85 * 172, cw = (X1 - X0) / 4; let g = '';
+  g += `<rect x="${X0}" y="${yV(0.8)}" width="${X1 - X0}" height="${yV(0.7) - yV(0.8)}" fill="#ef6b6b" opacity=".08"/>`;
+  for (let i = 0; i <= 7; i++) { const V = i / 10, y = yV(V).toFixed(1); g += `<line x1="${X0}" y1="${y}" x2="${X1}" y2="${y}" stroke="rgba(255,255,255,${i % 7 === 0 ? 0.0 : 0.06})"/>`; }
+  for (const [V, l, r] of [[0, '0 V', '0 %'], [0.35, '0,35 V', '50 %'], [0.7, '0,7 V', '100 %']]) {
+    const y = yV(V); g += `<line x1="${X0}" y1="${y}" x2="${X1}" y2="${y}" stroke="${V === 0.7 ? '#ef6b6b' : 'rgba(255,255,255,.3)'}" stroke-width="1.2"/>
+    <text x="${X0 - 4}" y="${y + 3.5}" text-anchor="end" fill="#a3acb4" style="font-size:9.5px">${l}</text><text x="${X1 + 4}" y="${y + 3.5}" fill="#a3acb4" style="font-size:9.5px">${r}</text>`;
+  }
+  if (S.cam === 'hdr') for (const [n, l] of [[100, '100 nits'], [REFW, '203'], [1000, '1 000 nits']]) { const y = yV(0.7 * pqEnc(n)); g += `<line x1="${X0}" y1="${y}" x2="${X1}" y2="${y}" stroke="#ce93d8" stroke-dasharray="3 3" opacity=".7"/><text x="${X0 + 3}" y="${y - 2}" fill="#ce93d8" style="font-size:8px">${l}</text>`; }
+  if (S.cam === 'sdr') { const y = yV(0.7 * sdrEnc(0.18)); g += `<line x1="${X0}" y1="${y}" x2="${X1}" y2="${y}" stroke="#78c8ff" stroke-dasharray="3 3" opacity=".6"/><text x="${X0 + 3}" y="${y - 2}" fill="#78c8ff" style="font-size:8px">gris nominal ${fr(sdrEnc(0.18) * 100, 0)} %</text>`; }
+  if (S.cam === 'lin') { const y = yV(0.7 * 0.18); g += `<line x1="${X0}" y1="${y}" x2="${X1}" y2="${y}" stroke="#78c8ff" stroke-dasharray="3 3" opacity=".6"/><text x="${X0 + 3}" y="${y - 2}" fill="#78c8ff" style="font-size:8px">gris nominal 18 %</text>`; }
+  P.forEach((p, i) => {
+    const xa = X0 + i * cw + 6, xb = X0 + (i + 1) * cw - 6, y = yV(p.V), col = p.clip3 ? '#ef6b6b' : p.c;
+    if (p.clip3) { const yg = yV(Math.min(p.Vraw, 0.8)); g += `<line x1="${xa}" y1="${yg}" x2="${xb}" y2="${yg}" stroke="${p.c}" stroke-dasharray="3 3" opacity=".55"/>${p.Vraw > 0.8 ? `<path d="M${(xa + xb) / 2 - 4} ${yg + 6} l4-6 4 6" stroke="${p.c}" fill="none"/>` : ''}<text x="${(xa + xb) / 2}" y="${y + 13}" text-anchor="middle" fill="#ef6b6b" class="td" style="font-size:9px">clip</text>`; }
+    g += `<line x1="${xa}" y1="${y}" x2="${xb}" y2="${y}" stroke="${col}" stroke-width="7" opacity=".22"/><line x1="${xa}" y1="${y}" x2="${xb}" y2="${y}" stroke="${col}" stroke-width="2.6"/>
+    <text x="${(xa + xb) / 2}" y="198" text-anchor="middle" fill="${p.c}" class="tu" style="font-size:9.5px">${['Noir', 'Gris', 'Blanc', 'Spéc.'][i]}</text>`;
+  });
+  return `<svg viewBox="0 0 240 204" role="img" aria-label="Oscilloscope"><rect x="${X0}" y="${yV(0.8)}" width="${X1 - X0}" height="${yV(-0.05) - yV(0.8)}" fill="#060708" stroke="#333a42"/>${g}</svg>`;
+}
+function inPipe(srcRate, ch, P) {
+  const H1 = 70, H2 = Math.max(4, H1 * Math.sqrt(ch / srcRate)), cy = 52, ratio = srcRate / ch; let lines = '';
+  P.forEach((p, i) => { const o1 = (i - 1.5) * (H1 / 5), o2 = (i - 1.5) * (H2 / 5); lines += `<path d="M8 ${cy + o1} H92 L142 ${cy + o2} H232" stroke="${p.clipAny ? '#ef6b6b' : p.c}" stroke-width="2" fill="none" opacity=".85"/>`; });
+  return `<svg viewBox="0 0 240 112" role="img" aria-label="Débit avant et après compression">
+  <path d="M6 ${cy - H1 / 2} H92 L142 ${cy - H2 / 2} H234 V${cy + H2 / 2} H142 L92 ${cy + H1 / 2} H6 Z" fill="#1e2328" stroke="${ICO}" stroke-width="1.5"/>${lines}
+  <text x="48" y="${cy - H1 / 2 - 5}" text-anchor="middle" fill="#e6e9ec" style="font-size:10px">${fr(srcRate / 1e9, 2)} Gb/s</text>
+  <text x="190" y="${cy - H2 / 2 - 6}" text-anchor="middle" fill="#ec3a8c" style="font-size:10px">${fr(ch / 1e6, 0)} Mb/s</text>
+  <text x="117" y="104" text-anchor="middle" fill="#e8b84a" class="td" style="font-size:12px">compression ≈ ${fr(ratio, 0)} : 1</text></svg>`;
+}
+function inNits(P) {
+  const X0 = 44, X1 = 232, YT = 14, YB = 214, yN = n => YB - clamp(n, 0, 10000) / 10000 * (YB - YT), cw = (X1 - X0) / 4;
+  const peak = S.disp === 'sdr' ? S.peak : S.tr === 'sdr' ? 100 : S.disp === 'h1000' ? 1000 : 10000;
+  let g = `<rect x="${X0}" y="${YT}" width="${X1 - X0}" height="${YB - YT}" fill="#060708" stroke="#333a42"/>`;
+  g += `<rect x="${X0}" y="${yN(peak)}" width="${X1 - X0}" height="${YB - yN(peak)}" fill="#e8b84a" opacity=".07"/>`;
+  for (let k = 0; k <= 10; k++) {
+    const n = k * 1000, y = yN(n);
+    g += `<line x1="${X0}" y1="${y}" x2="${X1}" y2="${y}" stroke="rgba(255,255,255,${k % 5 === 0 ? 0.28 : 0.08})"/>`;
+    if (k % 2 === 0) g += `<text x="${X0 - 4}" y="${y + 3.5}" text-anchor="end" fill="#a3acb4" style="font-size:9px">${fr(n, 0)}</text>`;
+  }
+  const yp = yN(peak);
+  g += `<line x1="${X0}" y1="${yp}" x2="${X1}" y2="${yp}" stroke="#e8b84a" stroke-width="1.4" stroke-dasharray="5 3"/>
+  <text x="${X1 - 3}" y="${yp > YT + 30 ? yp - 17 : yp + 11}" text-anchor="end" fill="#e8b84a" class="tu" style="font-size:9.5px">pic de l'écran · ${fr(peak, 0)} nits</text>`;
+  [0, 1, 2, 3].forEach((i, c) => {
+    const p = P[i], xa = X0 + c * cw + 9, w = cw - 18, y = Math.min(yN(p.Ld), YB - 1.2), col = p.c;
+    g += `<rect x="${xa}" y="${y}" width="${w}" height="${YB - y}" fill="${col}" opacity=".85"/>${p.clipAny ? `<rect x="${xa}" y="${y - 1}" width="${w}" height="2.5" fill="#ef6b6b"/>` : ''}
+    <text x="${xa + w / 2}" y="${Math.max(y - 4, YT + 9)}" text-anchor="middle" fill="${col}" style="font-size:9px">${nits(p.Ld)}</text>
+    <text x="${xa + w / 2}" y="${YB + 13}" text-anchor="middle" fill="${col}" class="tu" style="font-size:9.5px">${PN[i]}</text>`;
+  });
+  return `<svg viewBox="0 0 240 232" role="img" aria-label="Oscilloscope de l'écran en nits, de 0 à 10 000"><text x="${X0 - 4}" y="9" text-anchor="end" fill="#8e979f" class="tu" style="font-size:8.5px">nits</text>${g}</svg>`;
+}
+function inEye(P) {
+  let g = ''; const maxL = Math.max(...P.map(p => p.Ld));
+  g += `<rect x="2" y="2" width="70" height="204" rx="4" fill="#060708" stroke="${ICO}" stroke-width="4"/>`;
+  P.forEach((p, i) => {
+    const y = 8 + ROW(i) * 50, cy = y + 21, b = pqEnc(p.Ld), w = 1 + b * 6, glow = p.Ld > 1000;
+    g += `${glow ? `<rect x="6" y="${y - 3}" width="62" height="48" rx="3" fill="#fff" opacity="${0.15 + 0.35 * (pqEnc(p.Ld) - 0.75) / 0.25}"/>` : ''}<rect x="10" y="${y}" width="54" height="42" fill="${i === 3 ? mixHex('#2a2006', '#f5c542', clamp(b * 1.15, 0, 1)) : gray(b)}"${i === 3 ? ' stroke="#f5c542" stroke-width="2"' : ''}/>${i === 3 ? `<path d="M37 ${cy - 13} l3 8 8 3-8 3-3 8-3-8-8-3 8-3z" fill="#fff6d0"/>` : ''}
+    ${p.clipAny ? `<text x="37" y="${y + 38}" text-anchor="middle" fill="#ef6b6b" class="td" style="font-size:8.5px">écrêté</text>` : ''}
+    <line x1="74" y1="${cy}" x2="183" y2="${cy}" stroke="${p.c}" stroke-width="${w}"/><path d="M181 ${cy - 3 - w} L191 ${cy} L181 ${cy + 3 + w} z" fill="${p.c}"/>
+    <text x="128" y="${cy - 5 - w / 2}" text-anchor="middle" fill="${p.c}" style="font-size:10.5px">${nits(p.Ld)} nits</text>
+    <line x1="192" y1="${cy}" x2="214" y2="104" stroke="${p.c}" stroke-dasharray="2 3" opacity=".6"/>`;
+  });
+  const pr = clamp(7.5 - 5 * pqEnc(maxL), 2.2, 7.5);
+  g += `<path d="M198 104 Q218 86 238 104 Q218 122 198 104 Z" fill="#f2f2f2" stroke="${ICO}" stroke-width="1.5"/><circle cx="218" cy="104" r="8.5" fill="#5b95f0"/><circle cx="218" cy="104" r="${pr.toFixed(1)}" fill="#0c0e10"/><circle cx="221" cy="101" r="1.6" fill="#fff"/>
+  <text x="218" y="134" text-anchor="middle" fill="#8e979f" class="td" style="font-size:9.5px">Œil</text>`;
+  return `<svg viewBox="0 0 240 208" role="img" aria-label="Écran, luminances affichées et œil">${g}</svg>`;
+}
+
+const CURVE = { lin: 'linéaire (sans gamma)', sdr: 'Rec.709 (BT.1886)', hdr: 'PQ (ST 2084)' };
+/* ===================== rendu ===================== */
+const PN = ['Noir', 'Gris', 'Blanc', 'Spéc.'];
+function render() {
+  const R = calc(), P = R.P, G = P[1], camL = { lin: 'Gamma OFF (linéaire)', sdr: 'SDR · Rec.709', hdr: 'HDR · PQ' }[S.cam];
+
+  /* 01 */
+  $('#ic1').innerHTML = icSun(S.lux) + chev;
+  $('#in1').innerHTML = inLux(S.lux);
+  $('#luxV').textContent = fr(r3(S.lux), S.lux < 10 ? 1 : 0) + ' lx';
+  $('#lmV').textContent = fr(r3(S.lm), 0) + ' lm';
+  $('#cdV').textContent = fr(r3(S.lm / HMI_OM), 0) + ' cd';
+  for (const b of $('#luxP').children) b.setAttribute('aria-pressed', Math.abs(+b.dataset.v - S.lm) / S.lm < 0.01);
+  const ev = Math.log2(S.lux / 2.5); $('#ev').textContent = 'IL ' + fr(ev, 1);
+  $('#o1').textContent = 'E = ' + fr(r3(S.lux), S.lux < 10 ? 1 : 0) + ' lx';
+  $('#fx1').innerHTML = `<h3>Formules · du lumen au lux</h3>
+  <span class="eq"><i>Ω</i> = 2π · (1 − cos(<i>θ</i>/2)) &nbsp;(sr)</span>
+  <span class="eq"><i>I</i> = <i>Φ</i> / <i>Ω</i> &nbsp;(cd = lm/sr)</span>
+  <span class="eq"><i>E</i> = <i>I</i> / <i>d</i>² &nbsp;(lx = lm/m²)</span>
+  <span class="eq">IL<sub>100</sub> = log<sub>2</sub>(<i>E</i> / 2,5)</span>
+  Le projecteur concentre son flux <i>Φ</i> dans un faisceau de ${HMI_A}° (angle solide <i>Ω</i>). L'éclairement diminue avec le carré de la distance : à 20 m, il serait divisé par 4 (−2 IL). Le luxmètre mesure la lumière qui <b>arrive</b> sur la scène (mesure incidente).
+  <span class="ex">Ω = 2π × (1 − cos 10°) = ${fr(HMI_OM, 4)} sr<br>I = ${fr(r3(S.lm), 0)} / ${fr(HMI_OM, 4)} = ${fr(r3(S.lm / HMI_OM), 0)} cd<br>E = ${fr(r3(S.lm / HMI_OM), 0)} / 10² = ${fr(r3(S.lux), S.lux < 10 ? 1 : 0)} lx · IL = ${fr(ev, 1)}</span>`;
+
+  /* 02 */
+  $('#ic2').innerHTML = icChart() + chev;
+  $('#in2').innerHTML = inSpot(P);
+  $('#aimN').textContent = P[S.aim].n.toLowerCase();
+  $('#aimV').textContent = nits(P[S.aim].L) + ' cd/m²';
+  $('#specV').textContent = fr(S.spec * 100, 0) + ' %';
+  $('#o2').textContent = 'L gris = ' + nits(G.L) + ' nits';
+  $('#fx2').innerHTML = `<h3>Formules · luminance</h3>
+  <span class="eq"><i>L</i> = <i>E</i> × <i>ρ</i> / π</span>
+  <i>L</i> en cd/m² (= nits), <i>ρ</i> réflectance de la surface mate (lambertienne). Le spotmètre mesure la lumière <b>renvoyée</b> vers la caméra.
+  <span class="ex">Gris : ${fr(r3(S.lux), 0)} × 0,18 / π = ${nits(G.L)} nits</span>
+  <span class="eq" style="margin-top:4px">Écart blanc / noir = 90 / 3 = 30 : 1 ≈ 4,9 IL</span>
+  Le spéculaire (reflet du soleil sur une surface brillante) n'est pas lambertien : on le représente par une réflectance équivalente supérieure à 100 %, ici ${fr(Math.log2(S.spec / 0.9), 1)} IL au-dessus du blanc.`;
+
+  /* 03 */
+  $('#ic3').innerHTML = icCam(P) + chev;
+  $('#iris').innerHTML = inIris(R.N, S.k);
+  $('#fnum').textContent = 'f/' + fLab(S.k);
+  const evo = Math.log2(Math.max(G.Y, 1e-9) / 0.18);
+  const ok = Math.abs(evo) < 0.17;
+  $('#expo').innerHTML = `Gris : <span style="color:${ok ? 'var(--phos)' : 'var(--warn)'}">${evo > 0 ? '+' : ''}${fr(evo, 1)} IL</span><br><span class="dim">${ok ? 'exposition correcte' : evo > 0 ? 'surexposé' : 'sous-exposé'}</span>`;
+  $('#kV').textContent = 'f/' + fLab(S.k); $('#isoV').textContent = ISOS[S.iso];
+  $('#in3').innerHTML = inScope(P);
+  for (const b of $('#camSeg').children) b.setAttribute('aria-pressed', b.dataset.v === S.cam);
+  for (const b of $('#sdrcSeg').children) b.setAttribute('aria-pressed', b.dataset.v === S.sdrc);
+  $('#sdrcF').hidden = S.cam !== 'sdr';
+  const nclip = P.filter(p => p.clip3).length;
+  $('#n3').className = 'note' + (nclip ? ' err' : ' ok');
+  $('#n3').textContent = nclip ? `${nclip} zone${nclip > 1 ? 's' : ''} au-delà de 0,7 V : signal écrêté (${P.filter(p => p.clip3).map(p => p.n.toLowerCase()).join(', ')}).` : 'Toutes les zones tiennent sous 0,7 V.';
+  $('#o3').textContent = 'V gris = ' + fr(G.V, 3) + ' V';
+  const gEq = S.cam === 'lin' ? `<span class="eq"><i>V</i> = 0,7 V × <i>Y</i> &nbsp;(pas de gamma)</span>`
+    : S.cam === 'sdr' ? (S.sdrc === 'g24'
+      ? `<span class="eq"><i>E'</i> = <i>Y</i><sup>1/2,4</sup></span><span class="eq"><i>V</i> = 0,7 V × <i>E'</i></span>Inverse exacte de l'écran BT.1886 (γ 2,4) : le gris 18 % monte à 49 % du signal et l'écran le ramène à 18 % de son pic (18 nits sur un écran 100 nits). Gamma système = 1.`
+      : `<span class="eq"><i>E'</i> = 1,099 · <i>Y</i><sup>0,45</sup> − 0,099 &nbsp;(4,5·<i>Y</i> si <i>Y</i> &lt; 0,018)</span><span class="eq"><i>V</i> = 0,7 V × <i>E'</i></span>OETF réelle des caméras BT.709 : le gris est à 41 %. Avec l'écran BT.1886 (γ 2,4), le gamma système vaut ≈ 1,2 : l'image est volontairement plus contrastée et le gris s'affiche vers 12 nits.`)
+      : `<span class="eq"><i>F</i> = <i>Y</i> × 203 nits &nbsp;(blanc 100 % = 203 nits, BT.2408)</span><span class="eq"><i>E'</i> = [(<i>c</i><sub>1</sub> + <i>c</i><sub>2</sub>·<i>f</i><sup>m1</sup>) / (1 + <i>c</i><sub>3</sub>·<i>f</i><sup>m1</sup>)]<sup>m2</sup>, <i>f</i> = <i>F</i> / 10 000</span><span class="eq"><i>V</i> = 0,7 V × <i>E'</i></span>PQ (SMPTE ST 2084) : m1 = 0,1593 · m2 = 78,84 · c1 = 0,8359 · c2 = 18,85 · c3 = 18,69.`;
+  $('#fx3').innerHTML = `<h3>Formules · exposition et gamma</h3>
+  <span class="eq"><i>E</i><sub>capteur</sub> = π · <i>L</i> · <i>T</i><sub>ND</sub> / (4 · <i>N</i>²)</span>
+  <span class="eq"><i>H</i> = <i>E</i><sub>capteur</sub> × <i>t</i> &nbsp;(lx·s)</span>
+  <span class="eq"><i>Y</i> = 0,18 · <i>L</i> · <i>t</i> · ISO · <i>T</i><sub>ND</sub> / (12,5 · <i>N</i>²)</span>
+  <i>Y</i> = 0,18 : gris bien exposé. Fermer d'un diaph (<i>N</i> × √2) divise la lumière par 2 ; un ND 0,3 aussi.
+  ${gEq}
+  <span class="ex">Gris : E capteur = ${nits(G.Ec)} lx · Y = ${fr(G.Y, 3)} · E' = ${fr(G.e, 3)} · V = ${fr(G.V, 3)} V</span>`;
+
+  /* 04 */
+  $('#ic4').innerHTML = icPC() + chev;
+  for (const b of $('#rgSeg').children) b.setAttribute('aria-pressed', b.dataset.v === S.range);
+  let th = '<thead><tr><th>Bits →</th>' + DEPTHS.map(n => `<th data-n="${n}" tabindex="0" class="${n === S.depth ? 'on' : ''}" title="Choisir ${n} bits">${n}</th>`).join('') + '</tr></thead><tbody>';
+  for (const i of ORD) { const p = P[i]; th += `<tr><td><span class="dot" style="background:${p.c}"></span>${PN[i]}</td>` + DEPTHS.map(n => `<td data-n="${n}" class="${n === S.depth ? 'on' : ''}${p.clip3 ? ' clip' : ''}">${p.codes[n]}</td>`).join('') + '</tr>'; }
+  $('#tq').innerHTML = th + '</tbody>';
+  $('#bin').innerHTML = ORD.map(i => P[i]).map(p => `<span>${p.n}</span><span class="${p.clip3 ? 'clip' : ''}">${binStr(p.codes[S.depth], S.depth)}</span>`).join('');
+  const lev = P[1].codes[S.depth] - P[0].codes[S.depth];
+  $('#lev').textContent = fr(lev, 0) + ' codes';
+  $('#stepq').textContent = fr(0.7 / ((S.range === 'legal' ? 219 * Math.pow(2, S.depth - 8) : Math.pow(2, S.depth) - 1)) * 1000, S.depth >= 12 ? 3 : 2) + ' mV';
+  const levBad = lev < 40;
+  $('#n4').className = 'note' + (levBad ? ' wa' : '');
+  $('#n4').textContent = `${Math.pow(2, S.depth).toLocaleString('fr-FR')} niveaux en ${S.depth} bits. ${S.range === 'legal' ? `Plage légale : noir = ${16 * Math.pow(2, S.depth - 8)}, blanc 100 % = ${235 * Math.pow(2, S.depth - 8)}.` : `Plage pleine : de 0 à ${Math.pow(2, S.depth) - 1}.`}${levBad ? ' Peu de codes dans les ombres : risque de banding.' : ''}`;
+  $('#o4').textContent = `Gris = ${fr(G.codes[S.depth], 0)} (${S.depth} bits)`;
+  const nn = Math.pow(2, S.depth - 8);
+  $('#fx4').innerHTML = `<h3>Formules · quantification</h3>
+  <span class="eq">Légale : <i>D</i> = arrondi[(16 + 219·<i>E'</i>) × 2<sup><i>n</i>−8</sup>]</span>
+  <span class="eq">Pleine : <i>D</i> = arrondi[<i>E'</i> × (2<sup><i>n</i></sup> − 1)]</span>
+  <span class="eq">Niveaux = 2<sup><i>n</i></sup> : 256 · 1 024 · 4 096 · 65 536</span>
+  Le convertisseur découpe la tension 0–0,7 V en marches : chaque bit en plus double le nombre de marches.
+  <span class="ex">Gris ${S.depth} bits : ${S.range === 'legal' ? `(16 + 219 × ${fr(G.e3, 3)}) × ${nn}` : `${fr(G.e3, 3)} × ${Math.pow(2, S.depth) - 1}`} = ${fr(G.codes[S.depth], 0)}</span>`;
+
+  /* 05 */
+  $('#ic5').innerHTML = icSat(S.tr === 'hdr') + chev;
+  for (const b of $('#trSeg').children) b.setAttribute('aria-pressed', b.dataset.v === S.tr);
+  const src = 3840 * 2160 * 2 * S.depth * 25, ch = TRF[S.tr].rate;
+  $('#in5').innerHTML = inPipe(src, ch, P);
+  $('#fmt5').innerHTML = `<span class="dim">Entrée :</span> UHD 4:2:2 · ${S.depth} bits · ${camL}<br><span class="dim">Sortie :</span> ${TRF[S.tr].label}`;
+  const b5 = TRF[S.tr].bits;
+  $('#t5').innerHTML = `<thead><tr><th>Zone</th><th>${b5} bits</th><th>%</th></tr></thead><tbody>` + ORD.map(i => P[i]).map(p => `<tr><td><span class="dot" style="background:${p.c}"></span>${PN[P.indexOf(p)]}</td><td class="${p.clip5 ? 'clip' : ''}">${p.c5}</td><td>${fr(p.e5 * 100, 1)}</td></tr>`).join('') + '</tbody>';
+  let n5 = '', c5 = '';
+  if (S.cam === S.tr) { n5 = `Chaîne cohérente : la caméra envoie du ${CURVE[S.cam]}, la diffusion l'étiquette ${CURVE[S.tr]}. Le signal est requantifié en ${b5} bits puis compressé.`; c5 = 'ok'; }
+  else { n5 = `Courbes différentes : la caméra envoie du ${CURVE[S.cam]}, mais la diffusion l'étiquette ${CURVE[S.tr]}. Aucune conversion n'est faite : l'écran va lire les codes avec la mauvaise courbe.${S.cam === 'lin' ? ' Un signal sans gamma paraîtra très sombre et très contrasté.' : ''} Choisissez la même courbe en 03 et en 05.`; c5 = 'err'; }
+  $('#n5').className = 'note' + (c5 ? ' ' + c5 : ''); $('#n5').textContent = n5;
+  $('#o5').textContent = `Gris = ${G.c5} (${b5} bits) · ${fr(ch / 1e6, 0)} Mb/s`;
+  $('#fx5').innerHTML = `<h3>Formules · débit</h3>
+  <span class="eq">Débit = largeur × hauteur × échantillons/pixel × bits × images/s</span>
+  <span class="eq">Compression = débit source / débit du canal</span>
+  En 4:2:2, chaque pixel porte 2 échantillons (1 luma + ½ Cb + ½ Cr) ; en 4:2:0, 1,5.
+  <span class="ex">3 840 × 2 160 × 2 × ${S.depth} × 25 = ${fr(src / 1e9, 2)} Gb/s → ${fr(ch / 1e6, 0)} Mb/s, soit ÷ ${fr(src / ch, 0)}</span>`;
+
+  /* 06 */
+  $('#ic6').innerHTML = icScreen();
+  for (const b of $('#dpSeg').children) b.setAttribute('aria-pressed', b.dataset.v === S.disp);
+  $('#in6').innerHTML = inEye(P);
+  $('#in6s').innerHTML = inNits(P);
+  $('#peakF').hidden = S.disp !== 'sdr'; $('#peakV').textContent = S.peak + ' nits';
+  let n6 = '', c6 = '';
+  if (S.cam !== S.tr && !(S.disp === 'sdr' && S.tr === 'hdr')) { n6 = `Erreur de chaîne en amont : le signal ${CURVE[S.cam]} de la caméra est lu comme du ${CURVE[S.disp === 'sdr' || S.tr === 'sdr' ? 'sdr' : 'hdr']}. Les luminances affichées sont fausses.`; c6 = 'err'; }
+  else if (S.disp === 'sdr' && S.tr === 'sdr') { n6 = `Lecture relative : 100 % du signal = le pic de l'écran (${S.peak} nits). Changez ce pic : toutes les zones bougent ensemble.`; c6 = 'ok'; }
+  else if (S.disp === 'sdr' && S.tr === 'hdr') { n6 = "Erreur de chaîne : l'écran SDR lit le signal PQ comme du Rec.709 (BT.1886). Image délavée, contraste écrasé, luminances fausses."; c6 = 'err'; }
+  else if (S.tr === 'sdr') { n6 = "Signal SDR reçu : l'écran HDR repasse en mode SDR (BT.1886, 100 nits). Aucun gain HDR."; c6 = 'wa'; }
+  else { const k = P.filter(p => p.clip6).length; n6 = `Lecture PQ absolue : chaque code correspond à une luminance fixe, quel que soit l'écran.${k ? ` Au-delà de ${S.disp === 'h1000' ? '1 000' : '10 000'} nits l'écran écrête (un téléviseur réel ferait un tone mapping).` : ''}`; c6 = k ? 'wa' : 'ok'; }
+  $('#n6').className = 'note ' + c6; $('#n6').textContent = n6;
+  $('#o6').textContent = 'Gris = ' + nits(G.Ld) + ' nits';
+  const sdrRead = S.disp === 'sdr' || S.tr === 'sdr';
+  $('#fx6').innerHTML = `<h3>Formules · EOTF de l'écran</h3>
+  <span class="eq">SDR (relatif) : <i>L</i> = <i>L</i><sub>max</sub> × <i>E'</i><sup>2,4</sup> &nbsp;(BT.1886)</span>
+  <span class="eq">HDR (absolu) : <i>L</i> = 10 000 × [max(<i>E'</i><sup>1/m2</sup> − <i>c</i><sub>1</sub>, 0) / (<i>c</i><sub>2</sub> − <i>c</i><sub>3</sub>·<i>E'</i><sup>1/m2</sup>)]<sup>1/m1</sup> &nbsp;(ST 2084)</span>
+  En SDR, 100 % vaut le pic de l'écran, quel qu'il soit. En PQ, le même code donne les mêmes nits sur tous les écrans, jusqu'à leur limite.
+  <span class="ex">Gris : E' = ${fr(G.s5, 3)} → ${sdrRead ? `${S.disp === 'sdr' ? S.peak : 100} × ${fr(G.s5, 3)}^2,4` : 'PQ⁻¹'} = ${nits(G.Ld)} nits</span>`;
+
+  /* synthèse */
+  $('#synInfo').textContent = `${fr(r3(S.lm), 0)} lm à 10 m → ${fr(r3(S.lux), 0)} lx · f/${fLab(S.k)} · ISO ${ISOS[S.iso]} · 1/${SHS[S.sh]} s · ND ${fr(NDS[S.nd], 1)} · ${camL} · CAN ${S.depth} bits · diffusion ${S.tr.toUpperCase()} · écran ${{ sdr: 'SDR ' + S.peak + ' nits', h1000: 'HDR 1 000 nits', h10000: 'HDR 10 000 nits' }[S.disp]}`;
+  $('#syn').innerHTML = `<thead><tr><th>Zone</th><th>ρ</th><th>L scène (nits)</th><th>Y linéaire</th><th>Caméra (V)</th><th>Caméra (%)</th><th>CAN ${S.depth} bits</th><th>Diffusion ${b5} bits</th><th>L écran (nits)</th><th>Écran / scène</th></tr></thead><tbody>` +
+    ORD.map(i => P[i]).map(p => `<tr><td><span class="dot" style="background:${p.c}"></span>${p.n}</td><td>${fr(p.rho * 100, 0)} %</td><td>${nits(p.L)}</td><td>${fr(p.Y, 3)}</td><td class="${p.clip3 ? 'clip' : ''}">${fr(p.V, 3)}</td><td class="${p.clip3 ? 'clip' : ''}">${fr(p.e3 * 100, 1)}</td><td>${fr(p.codes[S.depth], 0)}</td><td class="${p.clip5 ? 'clip' : ''}">${p.c5}</td><td class="${p.clipAny ? 'clip' : ''}">${nits(p.Ld)}</td><td>1 / ${fr(p.L / Math.max(p.Ld, 1e-6), 0)}</td></tr>`).join('') + '</tbody>';
+
+  syncInputs();
+}
+function syncInputs() {
+  $('#luxR').value = Math.round(Math.log10(S.lm / LM_MIN) / Math.log10(LM_MAX / LM_MIN) * 1000);
+  $('#specR').value = Math.round(Math.log(S.spec / SPEC_MIN) / Math.log(SPEC_MAX / SPEC_MIN) * 1000);
+  $('#kR').value = S.k; $('#isoR').value = S.iso; $('#ndS').value = S.nd; $('#shS').value = S.sh; $('#peakR').value = S.peak;
+}
+
+/* ===================== exposition automatique ===================== */
+function autoExpose() {
+  const Lg = S.lux * 0.18 / Math.PI, t = 1 / SHS[S.sh];
+  const need = (iso, nd) => Math.sqrt(Lg * t * iso * Math.pow(10, -nd) / 12.5);
+  const kOf = N => Math.round(9 * (2 * Math.log2(N) - 1));
+  let iso = S.iso;
+  for (let nd = 0; nd < NDS.length; nd++) {
+    const N = need(ISOS[iso], NDS[nd]);
+    if (N <= fN(KMAX) * 1.02) {
+      if (nd === 0 && N < 1.4) { /* manque de lumière : on monte les ISO */
+        while (iso < ISOS.length - 1 && need(ISOS[iso], 0) < 1.4) iso++;
+        S.iso = iso; S.nd = 0; S.k = clamp(kOf(need(ISOS[iso], 0)), 0, KMAX); return;
+      }
+      S.nd = nd; S.k = clamp(kOf(N), 0, KMAX); return;
+    }
+  }
+  S.nd = NDS.length - 1; S.k = KMAX;
+}
+
+/* ===================== événements ===================== */
+function seg(id, key) { $(id).addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; S[key] = b.dataset.v; render(); }); }
+/* ===================== plein écran d'un bloc ===================== */
+const FS = { blk: null, native: false };
+function setFS(blk) {
+  const prev = FS.blk;
+  if (prev) { prev.classList.remove('fs'); prev.querySelector('.fsb').innerHTML = '⛶ Plein écran'; prev.querySelector('.fsb').setAttribute('aria-pressed', 'false'); }
+  FS.blk = blk; document.body.style.overflow = blk ? 'hidden' : '';
+  if (FS.native && document.fullscreenElement && !blk) { FS.native = false; document.exitFullscreen().catch(() => { }); }
+  if (!blk) { if (prev) prev.querySelector('.fsb').focus(); return; }
+  blk.classList.add('fs'); blk.scrollTop = 0;
+  const b = blk.querySelector('.fsb'); b.innerHTML = '✕ Quitter le plein écran'; b.setAttribute('aria-pressed', 'true');
+  if (blk.requestFullscreen && !document.fullscreenElement) blk.requestFullscreen().then(() => { FS.native = true; }).catch(() => { FS.native = false; });
+}
+function initFS() {
+  document.querySelectorAll('.blk').forEach(blk => {
+    const row = document.createElement('div'); row.className = 'fsrow';
+    row.innerHTML = '<button class="btn fsb" type="button" aria-pressed="false" title="Afficher ce bloc en plein écran (Échap pour revenir)">⛶ Plein écran</button>';
+    const card = blk.querySelector('.card'); card.insertBefore(row, card.firstChild);
+    row.firstChild.addEventListener('click', () => setFS(FS.blk === blk ? null : blk));
+  });
+  document.addEventListener('fullscreenchange', () => { if (!document.fullscreenElement && FS.native) { FS.native = false; if (FS.blk) setFS(null); } });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && FS.blk) setFS(null); });
+}
+function setLm(lm) { S.lm = clamp(lm, LM_MIN, LM_MAX); S.lux = lmToLux(S.lm); }
+function initPageFS() {
+  const b = $('#pageFS'), root = document.documentElement;
+  const sync = () => { const on = document.fullscreenElement === root; b.textContent = on ? '✕ Quitter le plein écran' : '⛶ Plein écran'; b.setAttribute('aria-pressed', on); };
+  b.addEventListener('click', () => {
+    if (document.fullscreenElement) { document.exitFullscreen().catch(() => { }); return; }
+    if (!root.requestFullscreen) { b.textContent = 'Utilisez la touche F11'; setTimeout(sync, 3000); return; }
+    root.requestFullscreen().catch(() => { b.textContent = 'Plein écran bloqué ici · touche F11'; setTimeout(sync, 3500); });
+  });
+  document.addEventListener('fullscreenchange', sync);
+}
+function init() {
+  initFS(); initPageFS();
+  $('#ndS').innerHTML = NDS.map((d, i) => `<option value="${i}">${d ? `${fr(d, 1)} · −${fr(d / 0.3, 0)} IL` : 'Aucun'}</option>`).join('');
+  $('#shS').innerHTML = SHS.map((s, i) => `<option value="${i}">1/${s} s${s === 50 ? ' (180°)' : ''}</option>`).join('');
+  $('#luxP').innerHTML = HMIS.map(([n, lm]) => `<button type="button" data-v="${lm}" title="${fr(r3(lm), 0)} lm dans le faisceau">HMI ${n}</button>`).join('');
+  $('#luxR').addEventListener('input', e => { setLm(LM_MIN * Math.pow(LM_MAX / LM_MIN, +e.target.value / 1000)); render(); });
+  $('#luxP').addEventListener('click', e => { const b = e.target.closest('button'); if (b) { setLm(+b.dataset.v); render(); } });
+  $('#specR').addEventListener('input', e => { S.spec = SPEC_MIN * Math.pow(SPEC_MAX / SPEC_MIN, +e.target.value / 1000); render(); });
+  $('#in2').addEventListener('click', e => { const g = e.target.closest('[data-i]'); if (g) { S.aim = +g.dataset.i; render(); } });
+  $('#kR').addEventListener('input', e => { S.k = +e.target.value; render(); });
+  $('#isoR').addEventListener('input', e => { S.iso = +e.target.value; render(); });
+  $('#ndS').addEventListener('change', e => { S.nd = +e.target.value; render(); });
+  $('#shS').addEventListener('change', e => { S.sh = +e.target.value; render(); });
+  $('#peakR').addEventListener('input', e => { S.peak = +e.target.value; render(); });
+  seg('#camSeg', 'cam'); seg('#sdrcSeg', 'sdrc'); seg('#rgSeg', 'range'); seg('#trSeg', 'tr'); seg('#dpSeg', 'disp');
+  const pickRow = e => { const r = e.target.closest('[data-n]'); if (r) { S.depth = +r.dataset.n; render(); } };
+  $('#tq').addEventListener('click', pickRow);
+  $('#tq').addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pickRow(e); } });
+  $('#scExpo').addEventListener('click', () => { autoExpose(); render(); });
+  $('#scSDR').addEventListener('click', () => { Object.assign(S, { cam: 'sdr', tr: 'sdr', disp: 'sdr', peak: 100, depth: 10, range: 'legal' }); autoExpose(); render(); });
+  $('#scHDR').addEventListener('click', () => { Object.assign(S, { cam: 'hdr', tr: 'hdr', disp: 'h1000', depth: 10, range: 'legal' }); autoExpose(); render(); });
+  $('#scReset').addEventListener('click', () => { Object.assign(S, DEF); autoExpose(); render(); });
+  const sc = $('.scroller'), hint = () => { $('#hint').hidden = sc.scrollWidth <= sc.clientWidth + 2; };
+  window.addEventListener('resize', hint);
+  autoExpose(); render(); hint();
+}
+init();
+</script>
+</body></html>
